@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Language, LessonResult, StoredProgress } from '../types';
 
-const STORAGE_KEY = 'codetyper-progress';
+const STORAGE_KEY = 'keyscript-progress';
+const LEGACY_STORAGE_KEY = 'codetyper-progress';
 
 export function calculateStars(accuracy: number, wpm: number): number {
   if (accuracy >= 95 && wpm >= 30) return 3;
@@ -12,7 +13,7 @@ export function calculateStars(accuracy: number, wpm: number): number {
 export function useProgress() {
   const [progress, setProgress] = useState<StoredProgress>(() => {
     try {
-      const item = localStorage.getItem(STORAGE_KEY);
+      const item = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       return item ? JSON.parse(item) : {};
     } catch {
       return {};

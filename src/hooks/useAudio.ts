@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useAudio() {
   const [isMuted, setIsMuted] = useState<boolean>(() => {
-    const saved = localStorage.getItem('codetyper-muted');
+    const saved = localStorage.getItem('keyscript-muted') || localStorage.getItem('codetyper-muted');
     return saved ? JSON.parse(saved) : false;
   });
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('codetyper-muted', JSON.stringify(isMuted));
+    localStorage.setItem('keyscript-muted', JSON.stringify(isMuted));
   }, [isMuted]);
 
   const initAudio = useCallback(() => {

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { CustomSnippet, Language, Lesson } from '../types';
 
-const STORAGE_KEY = 'codetyper-custom-snippets';
+const STORAGE_KEY = 'keyscript-custom-snippets';
+const LEGACY_STORAGE_KEY = 'codetyper-custom-snippets';
 
 const DEFAULT_CUSTOM_SNIPPETS: CustomSnippet[] = [
   {
@@ -25,7 +26,7 @@ const DEFAULT_CUSTOM_SNIPPETS: CustomSnippet[] = [
 export function useCustomCode() {
   const [snippets, setSnippets] = useState<CustomSnippet[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }

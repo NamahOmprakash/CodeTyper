@@ -90,7 +90,9 @@ export const AISettings: React.FC<AISettingsProps> = ({
 
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('codetyper-all-provider-settings');
+        const saved =
+          localStorage.getItem('keyscript-all-provider-settings') ||
+          localStorage.getItem('codetyper-all-provider-settings');
         if (saved) {
           const parsed = JSON.parse(saved);
           Object.keys(parsed).forEach((k) => {
@@ -201,7 +203,7 @@ export const AISettings: React.FC<AISettingsProps> = ({
       };
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('codetyper-all-provider-settings', JSON.stringify(updated));
+          localStorage.setItem('keyscript-all-provider-settings', JSON.stringify(updated));
         } catch {}
       }
       return updated;

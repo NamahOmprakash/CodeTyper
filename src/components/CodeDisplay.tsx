@@ -34,7 +34,7 @@ export const CodeDisplay: React.FC<CodeDisplayProps> = ({
 
   const [viewMode, setViewMode] = useState<'vscode' | 'onecompiler'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('codetyper-editor-view');
+      const saved = localStorage.getItem('keyscript-editor-view') || localStorage.getItem('codetyper-editor-view');
       if (saved === 'vscode' || saved === 'onecompiler') {
         return saved;
       }
@@ -45,7 +45,7 @@ export const CodeDisplay: React.FC<CodeDisplayProps> = ({
   const handleToggleView = (mode: 'vscode' | 'onecompiler') => {
     setViewMode(mode);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('codetyper-editor-view', mode);
+      localStorage.setItem('keyscript-editor-view', mode);
     }
   };
 

@@ -1,6 +1,6 @@
-# CodeTyper: System Architecture & Component Relations
+# Key Script: System Architecture & Component Relations
 
-This document maps all file relationships, data flows, hook lifecycles, and component hierarchies across the **CodeTyper** codebase.
+This document maps all file relationships, data flows, hook lifecycles, and component hierarchies across the **Key Script** codebase.
 
 ---
 
@@ -43,7 +43,7 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
 | **`TypingView`** | `src/components/TypingView.tsx` | `App.tsx` | `CodeDisplay`, `CoachBubble`, `AISettings`, `KeyboardVisualizer`, `CodeExplainer` | Main typing arena, manages window key listeners, HUD stats, code execution drawer, and layout split. |
 | **`CodeDisplay`** | `src/components/CodeDisplay.tsx` | `TypingView.tsx` | None | VS Code Dark+ and OneCompiler code editor view, per-character syntax coloring, line gutter, and status bar. |
 | **`CoachBubble`** | `src/components/CoachBubble.tsx` | `TypingView.tsx` | Trigger for `AISettings` | Visual banner/bubble showing real-time feedback from the AI Teaching Agent with "Read Aloud" and "Ask Coach" buttons. |
-| **`AISettings`** | `src/components/AISettings.tsx` | `TypingView.tsx` | None | Modal dialog to configure coach intelligence (Local, Gemini Nano, Gemini API, OpenAI, Ollama, LM Studio). |
+| **`AISettings`** | `src/components/AISettings.tsx` | `TypingView.tsx` | None | Modal dialog to configure coach intelligence (LM Studio, Ollama, Gemini API, OpenAI API). |
 | **`KeyboardVisualizer`** | `src/components/KeyboardVisualizer.tsx` | `TypingView.tsx` | `HandDiagram` | Virtual QWERTY keyboard with green/yellow/red semantic keys, shift indicators, and touch-typing finger guide. |
 | **`HandDiagram`** | `src/components/HandDiagram.tsx` | `KeyboardVisualizer.tsx` | None | Dual-hand SVG vector diagram highlighting the active finger (emerald) and shift finger (amber). |
 | **`CodeExplainer`** | `src/components/CodeExplainer.tsx` | `TypingView.tsx` | None | Right-hand sidebar with natural TTS code breakdown, collapsible Tricky Symbol Tips, and expected stdout card. |
@@ -110,7 +110,7 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
    - **Outputs**: Memoized `patterns`, `recordCorrectKey()`, `recordMistake()`, `getTopPatterns()`, `currentStreak`, `bestStreak`.
 
 3. **`useCoach.ts`**:
-   - **Role**: Orchestrates real-time AI coaching across 3 tiers (Local -> Nano -> Cloud/Local LLM).
+   - **Role**: Orchestrates real-time AI coaching across configured providers (LM Studio, Ollama, Gemini API, OpenAI).
    - **Outputs**: `currentMessage`, `isThinking`, `coachConfig`, `saveConfig`, `coachEnabled`, `setCoachEnabled`, `autoSpeak`, `setAutoSpeak`, `triggerCoaching`.
 
 4. **`useTTS.ts`**:
@@ -118,13 +118,13 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
    - **Outputs**: `voices[]`, `selectedVoiceURI`, `rate`, `isSpeaking`, `isPaused`, `speak()`, `stop()`, `pause()`, `resume()`, `refreshVoices()`.
 
 5. **`useProgress.ts`**:
-   - **Role**: Tracks star ratings, best WPM, and accuracy per lesson under key `codetyper-progress`.
+   - **Role**: Tracks star ratings, best WPM, and accuracy per lesson under key `keyscript-progress` (fallback to `codetyper-progress`).
 
 6. **`useCustomCode.ts`**:
-   - **Role**: Manages custom and uploaded snippets under key `codetyper-custom-snippets`.
+   - **Role**: Manages custom and uploaded snippets under key `keyscript-custom-snippets` (fallback to `codetyper-custom-snippets`).
 
 7. **`useTheme.ts`**:
-   - **Role**: Manages `dark` vs `light` mode under key `codetyper-theme`.
+   - **Role**: Manages `dark` vs `light` mode under key `keyscript-theme` (fallback to `codetyper-theme`).
 
 8. **`useAudio.ts`**:
    - **Role**: Generates Web Audio API mechanical switch clicks and error buzzes.
@@ -271,17 +271,18 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
 
 | Storage Key | Managed By | Stored Value Schema | Usage |
 | :--- | :--- | :--- | :--- |
-| `codetyper-progress` | `useProgress.ts` | `Record<Language, Record<LessonId, { bestWpm, bestAccuracy, stars, completedAt }>>` | Curriculum progress, star ratings, and statistics. |
-| `codetyper-custom-snippets` | `useCustomCode.ts` | `CustomSnippet[]` | User uploaded and custom written code snippets. |
-| `codetyper-theme` | `useTheme.ts` | `'dark' \| 'light'` | Color scheme selection (Midnight vs Daylight). |
-| `codetyper-audio-muted` | `useAudio.ts` | `'true' \| 'false'` | Mute toggle for mechanical keyboard click sounds. |
-| `codetyper-tts-voice` | `useTTS.ts` | `string` (Voice URI) | Selected SpeechSynthesis voice URI for lesson narration. |
-| `codetyper-tts-rate` | `useTTS.ts` | `string` (Float e.g. `'1.0'`, clamped 0.25 - 4.0) | Lesson narration speed multiplier. |
-| `codetyper-coach-voice` | `useCoach.ts` | `string` (Voice URI) | Dedicated voice URI for the AI Coach tutor. |
-| `codetyper-coach-rate` | `useCoach.ts` | `string` (Float e.g. `'1.0'`, clamped 0.25 - 4.0) | Dedicated speech speed multiplier for the AI Coach. |
-| `codetyper-coach-config` | `useCoach.ts` | `ProviderConfig` JSON (`providerId`, `apiKey`, `baseUrl`, `model`, `enabled`) | AI Coach provider credentials and settings. |
-| `codetyper-coach-enabled` | `useCoach.ts` | `'true' \| 'false'` | AI Coach active toggle. |
-| `codetyper-coach-autospeak` | `useCoach.ts` | `'true' \| 'false'` | Auto-read coaching tips via TTS toggle. |
+| `keyscript-progress` | `useProgress.ts` | `Record<Language, Record<LessonId, { bestWpm, bestAccuracy, stars, completedAt }>>` | Curriculum progress, star ratings, and statistics. |
+| `keyscript-custom-snippets` | `useCustomCode.ts` | `CustomSnippet[]` | User uploaded and custom written code snippets. |
+| `keyscript-theme` | `useTheme.ts` | `'dark' \| 'light'` | Color scheme selection (Midnight vs Daylight). |
+| `keyscript-muted` | `useAudio.ts` | `'true' \| 'false'` | Mute toggle for mechanical keyboard click sounds. |
+| `keyscript-tts-voice` | `useTTS.ts` | `string` (Voice URI) | Selected SpeechSynthesis voice URI for lesson narration. |
+| `keyscript-tts-rate` | `useTTS.ts` | `string` (Float e.g. `'1.0'`, clamped 0.25 - 4.0) | Lesson narration speed multiplier. |
+| `keyscript-coach-voice` | `useCoach.ts` | `string` (Voice URI) | Dedicated voice URI for the AI Coach tutor. |
+| `keyscript-coach-rate` | `useCoach.ts` | `string` (Float e.g. `'1.0'`, clamped 0.25 - 4.0) | Dedicated speech speed multiplier for the AI Coach. |
+| `keyscript-coach-config` | `useCoach.ts` | `ProviderConfig` JSON (`providerId`, `apiKey`, `baseUrl`, `model`, `enabled`) | AI Coach provider credentials and settings. |
+| `keyscript-coach-enabled` | `useCoach.ts` | `'true' \| 'false'` | AI Coach active toggle. |
+| `keyscript-coach-autospeak` | `useCoach.ts` | `'true' \| 'false'` | Auto-read coaching tips via TTS toggle. |
+| `keyscript-all-provider-settings` | `AISettings.tsx` | `Record<string, ProviderSettings>` | Per-provider API keys, base URLs, and models. |
 
 ---
 

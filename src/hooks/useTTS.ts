@@ -37,6 +37,11 @@ export interface SpeakOptions {
   rate?: number;
 }
 
+const STORAGE_KEY_VOICE = 'keyscript-tts-voice';
+const LEGACY_STORAGE_KEY_VOICE = 'codetyper-tts-voice';
+const STORAGE_KEY_RATE = 'keyscript-tts-rate';
+const LEGACY_STORAGE_KEY_RATE = 'codetyper-tts-rate';
+
 export function useTTS() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -44,14 +49,14 @@ export function useTTS() {
 
   const [selectedVoiceURI, setSelectedVoiceURIState] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('codetyper-tts-voice') || '';
+      return localStorage.getItem(STORAGE_KEY_VOICE) || localStorage.getItem(LEGACY_STORAGE_KEY_VOICE) || '';
     }
     return '';
   });
 
   const [rate, setRateState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('codetyper-tts-rate');
+      const saved = localStorage.getItem(STORAGE_KEY_RATE) || localStorage.getItem(LEGACY_STORAGE_KEY_RATE);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed) && parsed >= 0.25 && parsed <= 4.0) {
@@ -82,7 +87,7 @@ export function useTTS() {
     const clamped = Math.max(0.25, Math.min(4.0, parseFloat(newRate.toFixed(2))));
     setRateState(clamped);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('codetyper-tts-rate', clamped.toString());
+      localStorage.setItem(STORAGE_KEY_RATE, clamped.toString());
     }
   }, []);
 
@@ -90,7 +95,7 @@ export function useTTS() {
   const setSelectedVoiceURI = useCallback((uri: string) => {
     setSelectedVoiceURIState(uri);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('codetyper-tts-voice', uri);
+      localStorage.setItem(STORAGE_KEY_VOICE, uri);
     }
   }, []);
 
@@ -117,7 +122,10 @@ export function useTTS() {
 
         // Restore saved voice or pick first available English/default voice
         setSelectedVoiceURIState((prev) => {
-          const saved = typeof window !== 'undefined' ? localStorage.getItem('codetyper-tts-voice') : '';
+          const saved =
+            typeof window !== 'undefined'
+              ? localStorage.getItem(STORAGE_KEY_VOICE) || localStorage.getItem(LEGACY_STORAGE_KEY_VOICE)
+              : '';
           const candidate = prev || saved;
           if (candidate && availableVoices.some((v) => v.voiceURI === candidate)) {
             return candidate;

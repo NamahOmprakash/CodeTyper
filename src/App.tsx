@@ -185,7 +185,7 @@ export function App() {
       {(!isFocusMode || currentView !== 'typing') && (
         <footer className="border-t border-theme-border/60 py-3 sm:py-4 px-4 text-center text-[11px] sm:text-xs text-theme-text-muted select-none">
           <p>
-            CodeTyper — Building coding muscle memory and programming fluency one key at a time.
+            Key Script — Building coding muscle memory and programming fluency one key at a time.
           </p>
         </footer>
       )}

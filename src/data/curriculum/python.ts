@@ -7,7 +7,7 @@ export const pythonLessons: Lesson[] = [
     title: 'Hello, World!',
     description: 'Master standard output, quotation marks, and parentheses.',
     language: 'python',
-    code: `print("Hello, World!")\nprint("Welcome to CodeTyper!")`,
+    code: `print("Hello, World!")\nprint("Welcome to Key Script!")`,
     keyFocus: ['(', ')', '"', '!'],
     explanation: [
       {
@@ -26,7 +26,7 @@ export const pythonLessons: Lesson[] = [
         lineRange: [1, 2],
       },
     ],
-    expectedOutput: `Hello, World!\nWelcome to CodeTyper!`,
+    expectedOutput: `Hello, World!\nWelcome to Key Script!`,
   },
   {
     id: 'py-02',

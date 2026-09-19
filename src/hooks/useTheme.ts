@@ -3,14 +3,14 @@ import { THEMES } from '../data/themes';
 
 export function useTheme() {
   const [themeId, setThemeId] = useState<string>(() => {
-    const saved = localStorage.getItem('codetyper-theme');
+    const saved = localStorage.getItem('keyscript-theme') || localStorage.getItem('codetyper-theme');
     return saved && THEMES[saved] ? saved : 'midnight';
   });
 
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', themeId);
-    localStorage.setItem('codetyper-theme', themeId);
+    localStorage.setItem('keyscript-theme', themeId);
   }, [themeId]);
 
   const toggleTheme = () => {

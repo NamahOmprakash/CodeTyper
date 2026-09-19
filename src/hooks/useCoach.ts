@@ -4,11 +4,16 @@ import { getProvider } from '../utils/coaching/providers';
 import { useMistakeTracker } from './useMistakeTracker';
 import { Language } from '../types';
 
-const STORAGE_KEY_CONFIG = 'codetyper-coach-config';
-const STORAGE_KEY_ENABLED = 'codetyper-coach-enabled';
-const STORAGE_KEY_AUTOSPEAK = 'codetyper-coach-autospeak';
-const STORAGE_KEY_COACH_VOICE = 'codetyper-coach-voice';
-const STORAGE_KEY_COACH_RATE = 'codetyper-coach-rate';
+const STORAGE_KEY_CONFIG = 'keyscript-coach-config';
+const LEGACY_STORAGE_KEY_CONFIG = 'codetyper-coach-config';
+const STORAGE_KEY_ENABLED = 'keyscript-coach-enabled';
+const LEGACY_STORAGE_KEY_ENABLED = 'codetyper-coach-enabled';
+const STORAGE_KEY_AUTOSPEAK = 'keyscript-coach-autospeak';
+const LEGACY_STORAGE_KEY_AUTOSPEAK = 'codetyper-coach-autospeak';
+const STORAGE_KEY_COACH_VOICE = 'keyscript-coach-voice';
+const LEGACY_STORAGE_KEY_COACH_VOICE = 'codetyper-coach-voice';
+const STORAGE_KEY_COACH_RATE = 'keyscript-coach-rate';
+const LEGACY_STORAGE_KEY_COACH_RATE = 'codetyper-coach-rate';
 
 const DEFAULT_CONFIG: ProviderConfig = {
   providerId: 'lmstudio',
@@ -43,14 +48,20 @@ export function useCoach({
 
   const [coachVoiceURI, setCoachVoiceURIState] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEY_COACH_VOICE) || '';
+      return (
+        localStorage.getItem(STORAGE_KEY_COACH_VOICE) ||
+        localStorage.getItem(LEGACY_STORAGE_KEY_COACH_VOICE) ||
+        ''
+      );
     }
     return '';
   });
 
   const [coachRate, setCoachRateState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY_COACH_RATE);
+      const saved =
+        localStorage.getItem(STORAGE_KEY_COACH_RATE) ||
+        localStorage.getItem(LEGACY_STORAGE_KEY_COACH_RATE);
       if (saved) {
         const parsed = parseFloat(saved);
         if (!isNaN(parsed) && parsed >= 0.25 && parsed <= 4.0) {
@@ -64,7 +75,9 @@ export function useCoach({
   const [coachConfig, setCoachConfigState] = useState<ProviderConfig>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
+        const saved =
+          localStorage.getItem(STORAGE_KEY_CONFIG) ||
+          localStorage.getItem(LEGACY_STORAGE_KEY_CONFIG);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.providerId === 'local' || parsed.providerId === 'nano') {
@@ -81,7 +94,9 @@ export function useCoach({
 
   const [coachEnabled, setCoachEnabledState] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY_ENABLED);
+      const saved =
+        localStorage.getItem(STORAGE_KEY_ENABLED) ??
+        localStorage.getItem(LEGACY_STORAGE_KEY_ENABLED);
       if (saved !== null) return saved === 'true';
     }
     return true;
@@ -89,7 +104,9 @@ export function useCoach({
 
   const [autoSpeak, setAutoSpeakState] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY_AUTOSPEAK);
+      const saved =
+        localStorage.getItem(STORAGE_KEY_AUTOSPEAK) ??
+        localStorage.getItem(LEGACY_STORAGE_KEY_AUTOSPEAK);
       if (saved !== null) return saved === 'true';
     }
     return false;

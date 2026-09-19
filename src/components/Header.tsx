@@ -55,8 +55,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="font-mono font-bold text-base leading-tight tracking-tight flex items-center gap-1">
-                <span>Code</span>
-                <span className="text-theme-primary">Typer</span>
+                <span>Key</span>
+                <span className="text-theme-primary">Script</span>
               </div>
             </div>
           </button>

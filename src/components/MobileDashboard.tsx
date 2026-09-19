@@ -55,7 +55,7 @@ export const MobileDashboard: React.FC<MobileDashboardProps> = ({
             </span>
           </h2>
           <p className="text-[11px] sm:text-xs text-theme-text-muted mt-1 leading-relaxed">
-            CodeTyper is built for typing on a physical keyboard and is <strong>not optimized for Android or mobile touchscreens</strong>.
+            Key Script is built for typing on a physical keyboard and is <strong>not optimized for Android or mobile touchscreens</strong>.
             Please visit on a <strong>laptop or desktop</strong> to practice typing. You can review your progress and stats below.
           </p>
         </div>
