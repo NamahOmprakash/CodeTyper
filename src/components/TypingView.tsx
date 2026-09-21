@@ -455,6 +455,7 @@ export const TypingView: React.FC<TypingViewProps> = ({
           <KeyboardGuide
             targetChar={currentExpectedChar}
             pressedKey={pressedKey}
+            lastMistake={lastMistake}
           />
         </div>
 
