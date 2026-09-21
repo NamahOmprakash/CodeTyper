@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { MistakeInfo } from '../types';
 
@@ -122,18 +122,56 @@ export const ANSI_KEYS: KeyDef[] = [
 
 export const KEY_BY_CODE = new Map<string, KeyDef>(ANSI_KEYS.map((k) => [k.code, k]));
 
-// Default resting coordinates on home row keys (neatly centered on keycaps)
+// -----------------------------------------------------------------
+// MATHEMATICAL SYMMETRY ACROSS X = 368 (midpoint of F=293 and J=443)
+// -----------------------------------------------------------------
+const CENTER_X = 368;
+const mirrorX = (x: number) => 2 * CENTER_X - x; // 736 - x
+const isLeftFinger = (f: FingerId) => f.startsWith('left-') || f === 'thumb-left';
+const isRightFinger = (f: FingerId) => f.startsWith('right-') || f === 'thumb-right';
+
+// Left Hand anatomical anchor points
+const LEFT_WRIST = { x: 218, y: 315 };
+const LEFT_KNUCKLES: Record<FingerId, { x: number; y: number }> = {
+  'left-pinky':  { x: 143, y: 206 },
+  'left-ring':   { x: 193, y: 203 },
+  'left-middle': { x: 243, y: 201 },
+  'left-index':  { x: 293, y: 203 },
+  'thumb-left':  { x: 282, y: 245 },
+  // Placeholders for typing
+  'thumb-right': { x: mirrorX(282), y: 245 },
+  'right-index': { x: mirrorX(293), y: 203 },
+  'right-middle':{ x: mirrorX(243), y: 201 },
+  'right-ring':  { x: mirrorX(193), y: 203 },
+  'right-pinky': { x: mirrorX(143), y: 206 },
+};
+
+// Right Hand exact mathematical mirror
+const RIGHT_WRIST = { x: mirrorX(LEFT_WRIST.x), y: LEFT_WRIST.y }; // (518, 315)
+const RIGHT_KNUCKLES: Record<FingerId, { x: number; y: number }> = {
+  'thumb-right': { x: mirrorX(LEFT_KNUCKLES['thumb-left'].x), y: LEFT_KNUCKLES['thumb-left'].y }, // (454, 245)
+  'right-index': { x: mirrorX(LEFT_KNUCKLES['left-index'].x), y: LEFT_KNUCKLES['left-index'].y }, // (443, 203)
+  'right-middle':{ x: mirrorX(LEFT_KNUCKLES['left-middle'].x), y: LEFT_KNUCKLES['left-middle'].y }, // (493, 201)
+  'right-ring':  { x: mirrorX(LEFT_KNUCKLES['left-ring'].x), y: LEFT_KNUCKLES['left-ring'].y }, // (543, 203)
+  'right-pinky': { x: mirrorX(LEFT_KNUCKLES['left-pinky'].x), y: LEFT_KNUCKLES['left-pinky'].y }, // (593, 206)
+  'thumb-left':  { x: 282, y: 245 },
+  'left-index':  { x: 293, y: 203 },
+  'left-middle': { x: 243, y: 201 },
+  'left-ring':   { x: 193, y: 203 },
+  'left-pinky':  { x: 143, y: 206 },
+};
+
 export const HOME_RESTING_TIPS: Record<FingerId, { x: number; y: number }> = {
-  'left-pinky':  { x: 143, y: 139 }, // KeyA
-  'left-ring':   { x: 193, y: 137 }, // KeyS
-  'left-middle': { x: 243, y: 135 }, // KeyD
-  'left-index':  { x: 293, y: 137 }, // KeyF
-  'thumb-left':  { x: 348, y: 235 }, // Space left
-  'thumb-right': { x: 442, y: 235 }, // Space right
-  'right-index': { x: 443, y: 137 }, // KeyJ
-  'right-middle':{ x: 493, y: 135 }, // KeyK
-  'right-ring':  { x: 543, y: 137 }, // KeyL
-  'right-pinky': { x: 593, y: 139 }, // Semicolon
+  'left-pinky':  { x: 143, y: 141 }, // KeyA
+  'left-ring':   { x: 193, y: 141 }, // KeyS
+  'left-middle': { x: 243, y: 141 }, // KeyD
+  'left-index':  { x: 293, y: 141 }, // KeyF
+  'thumb-left':  { x: 348, y: 237 }, // Space left
+  'thumb-right': { x: mirrorX(348), y: 237 }, // (388, 237) Space right
+  'right-index': { x: mirrorX(293), y: 141 }, // (443, 141) KeyJ
+  'right-middle':{ x: mirrorX(243), y: 141 }, // (493, 141) KeyK
+  'right-ring':  { x: mirrorX(193), y: 141 }, // (543, 141) KeyL
+  'right-pinky': { x: mirrorX(143), y: 141 }, // (593, 141) Semicolon
 };
 
 // Mapping of characters to target fingers and modifier requirements
@@ -258,200 +296,146 @@ export const FINGER_KEY_MAP: Record<string, KeyMapEntry> = {
   'Backspace': { finger: 'right-pinky', keyCode: 'Backspace', hand: 'right', requiresShift: false },
 };
 
-// Generates smooth Bezier curve segment between two anatomical anchor points
-function getEdgeCurve(x1: number, y1: number, x2: number, y2: number): string {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const cp1x = x1 + dx * 0.35;
-  const cp1y = y1 + dy * 0.35;
-  const cp2x = x2 - dx * 0.35;
-  const cp2y = y2 - dy * 0.35;
-  return `C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
-}
-
-// Generates slender, compact, elegant Left Hand outline matching media_1789968158671.png
-function getLeftHandPath(tips: Record<FingerId, { x: number; y: number }>) {
-  const lp = tips['left-pinky'];
-  const lr = tips['left-ring'];
-  const lm = tips['left-middle'];
-  const li = tips['left-index'];
-  const lt = tips['thumb-left'];
-
-  const pw = 6.5; // Pinky half-width (13px wide)
-  const rw = 7.0; // Ring half-width (14px wide)
-  const mw = 7.5; // Middle half-width (15px wide)
-  const iw = 7.5; // Index half-width (15px wide)
-  const tw = 8.0; // Thumb half-width (16px wide)
-
-  // Slender anatomical valleys between fingers
-  const w1 = { x: 168, y: 204 }; // Pinky - Ring
-  const w2 = { x: 218, y: 198 }; // Ring - Middle
-  const w3 = { x: 268, y: 202 }; // Middle - Index
-  const w4 = { x: 308, y: 246 }; // Index - Thumb
-
-  return [
-    // Outer wrist (compact 75px wrist at bottom)
-    `M 185,430`,
-    `C 180,375 168,310 166,255`,
-    `C 165,225 156,180 ${lp.x - pw},${lp.y}`,
-    // Pinky tip cap
-    `A ${pw},${pw} 0 0,1 ${lp.x + pw},${lp.y}`,
-    // Pinky inner edge to Web 1
-    getEdgeCurve(lp.x + pw, lp.y, w1.x, w1.y),
-    // Web 1 to Ring outer edge
-    getEdgeCurve(w1.x, w1.y, lr.x - rw, lr.y),
-    // Ring tip cap
-    `A ${rw},${rw} 0 0,1 ${lr.x + rw},${lr.y}`,
-    // Ring inner edge to Web 2
-    getEdgeCurve(lr.x + rw, lr.y, w2.x, w2.y),
-    // Web 2 to Middle outer edge
-    getEdgeCurve(w2.x, w2.y, lm.x - mw, lm.y),
-    // Middle tip cap
-    `A ${mw},${mw} 0 0,1 ${lm.x + mw},${lm.y}`,
-    // Middle inner edge to Web 3
-    getEdgeCurve(lm.x + mw, lm.y, w3.x, w3.y),
-    // Web 3 to Index outer edge
-    getEdgeCurve(w3.x, w3.y, li.x - iw, li.y),
-    // Index tip cap
-    `A ${iw},${iw} 0 0,1 ${li.x + iw},${li.y}`,
-    // Index inner edge to Web 4
-    getEdgeCurve(li.x + iw, li.y, w4.x, w4.y),
-    // Web 4 to Thumb outer edge
-    getEdgeCurve(w4.x, w4.y, lt.x - tw, lt.y),
-    // Thumb tip cap
-    `A ${tw},${tw} 0 0,1 ${lt.x + tw},${lt.y + 4}`,
-    // Thumb inner edge down thenar muscle to inner wrist
-    `C ${lt.x + 6},${lt.y + 20} 315,290 285,350`,
-    `C 270,380 262,410 260,430`,
-    `L 185,430`,
-    `Z`,
-  ].join(' ');
-}
-
-// Generates slender, compact, elegant Right Hand outline matching media_1789968158671.png
-function getRightHandPath(tips: Record<FingerId, { x: number; y: number }>) {
-  const rp = tips['right-pinky'];
-  const rr = tips['right-ring'];
-  const rm = tips['right-middle'];
-  const ri = tips['right-index'];
-  const rt = tips['thumb-right'];
-
-  const pw = 6.5;
-  const rw = 7.0;
-  const mw = 7.5;
-  const iw = 7.5;
-  const tw = 8.0;
-
-  // Slender anatomical valleys between fingers
-  const w1 = { x: 568, y: 204 }; // Ring - Pinky
-  const w2 = { x: 518, y: 198 }; // Middle - Ring
-  const w3 = { x: 468, y: 202 }; // Index - Middle
-  const w4 = { x: 476, y: 246 }; // Thumb - Index
-
-  return [
-    // Outer wrist (compact 75px wrist at bottom)
-    `M 655,430`,
-    `C 660,375 672,310 674,255`,
-    `C 675,225 684,180 ${rp.x + pw},${rp.y}`,
-    // Pinky tip cap
-    `A ${pw},${pw} 0 0,0 ${rp.x - pw},${rp.y}`,
-    // Pinky inner edge to Web 1
-    getEdgeCurve(rp.x - pw, rp.y, w1.x, w1.y),
-    // Web 1 to Ring outer edge
-    getEdgeCurve(w1.x, w1.y, rr.x + rw, rr.y),
-    // Ring tip cap
-    `A ${rw},${rw} 0 0,0 ${rr.x - rw},${rr.y}`,
-    // Ring inner edge to Web 2
-    getEdgeCurve(rr.x - rw, rr.y, w2.x, w2.y),
-    // Web 2 to Middle outer edge
-    getEdgeCurve(w2.x, w2.y, rm.x + mw, rm.y),
-    // Middle tip cap
-    `A ${mw},${mw} 0 0,0 ${rm.x - mw},${rm.y}`,
-    // Middle inner edge to Web 3
-    getEdgeCurve(rm.x - mw, rm.y, w3.x, w3.y),
-    // Web 3 to Index outer edge
-    getEdgeCurve(w3.x, w3.y, ri.x + iw, ri.y),
-    // Index tip cap
-    `A ${iw},${iw} 0 0,0 ${ri.x - iw},${ri.y}`,
-    // Index inner edge to Web 4
-    getEdgeCurve(ri.x - iw, ri.y, w4.x, w4.y),
-    // Web 4 to Thumb outer edge
-    getEdgeCurve(w4.x, w4.y, rt.x + tw, rt.y),
-    // Thumb tip cap
-    `A ${tw},${tw} 0 0,0 ${rt.x - tw},${rt.y + 4}`,
-    // Thumb inner edge down thenar muscle to inner wrist
-    `C ${rt.x - 6},${rt.y + 20} 525,290 555,350`,
-    `C 570,380 578,410 580,430`,
-    `L 655,430`,
-    `Z`,
-  ].join(' ');
-}
-
-// Generates an isolated reaching finger contour for glowing active stroke overlay
-function getActiveFingerContour(fingerId: FingerId, tips: Record<FingerId, { x: number; y: number }>): string | null {
-  const tip = tips[fingerId];
-  if (!tip) return null;
-
-  if (fingerId === 'left-pinky') {
-    const pw = 6.5;
-    const w1 = { x: 168, y: 204 };
-    return `M 166,255 C 165,225 156,180 ${tip.x - pw},${tip.y} A ${pw},${pw} 0 0,1 ${tip.x + pw},${tip.y} ${getEdgeCurve(tip.x + pw, tip.y, w1.x, w1.y)} Z`;
-  }
-  if (fingerId === 'left-ring') {
-    const rw = 7.0;
-    const w1 = { x: 168, y: 204 };
-    const w2 = { x: 218, y: 198 };
-    return `M ${w1.x},${w1.y} ${getEdgeCurve(w1.x, w1.y, tip.x - rw, tip.y)} A ${rw},${rw} 0 0,1 ${tip.x + rw},${tip.y} ${getEdgeCurve(tip.x + rw, tip.y, w2.x, w2.y)} Z`;
-  }
-  if (fingerId === 'left-middle') {
-    const mw = 7.5;
-    const w2 = { x: 218, y: 198 };
-    const w3 = { x: 268, y: 202 };
-    return `M ${w2.x},${w2.y} ${getEdgeCurve(w2.x, w2.y, tip.x - mw, tip.y)} A ${mw},${mw} 0 0,1 ${tip.x + mw},${tip.y} ${getEdgeCurve(tip.x + mw, tip.y, w3.x, w3.y)} Z`;
-  }
-  if (fingerId === 'left-index') {
-    const iw = 7.5;
-    const w3 = { x: 268, y: 202 };
-    const w4 = { x: 308, y: 246 };
-    return `M ${w3.x},${w3.y} ${getEdgeCurve(w3.x, w3.y, tip.x - iw, tip.y)} A ${iw},${iw} 0 0,1 ${tip.x + iw},${tip.y} ${getEdgeCurve(tip.x + iw, tip.y, w4.x, w4.y)} Z`;
-  }
-  if (fingerId === 'thumb-left') {
-    const tw = 8.0;
-    const w4 = { x: 308, y: 246 };
-    return `M ${w4.x},${w4.y} ${getEdgeCurve(w4.x, w4.y, tip.x - tw, tip.y)} A ${tw},${tw} 0 0,1 ${tip.x + tw},${tip.y + 4} C ${tip.x + 6},${tip.y + 20} 315,290 285,350 Z`;
+const renderFingerStick = (
+  keyPrefix: string,
+  fId: FingerId,
+  knuckle: { x: number; y: number },
+  tip: { x: number; y: number },
+  isActive: boolean,
+  isShift: boolean,
+  isError: boolean
+) => {
+  if (isError) {
+    return (
+      <g key={`${keyPrefix}-${fId}`}>
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#dc2626"
+          strokeWidth="9"
+          strokeOpacity="0.30"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#ef4444"
+          strokeWidth="5"
+          strokeOpacity="0.75"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#ffffff"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+      </g>
+    );
   }
 
-  if (fingerId === 'right-index') {
-    const iw = 7.5;
-    const w3 = { x: 468, y: 202 };
-    const w4 = { x: 476, y: 246 };
-    return `M ${w4.x},${w4.y} ${getEdgeCurve(w4.x, w4.y, tip.x - iw, tip.y)} A ${iw},${iw} 0 0,1 ${tip.x + iw},${tip.y} ${getEdgeCurve(tip.x + iw, tip.y, w3.x, w3.y)} Z`;
-  }
-  if (fingerId === 'right-middle') {
-    const mw = 7.5;
-    const w3 = { x: 468, y: 202 };
-    const w2 = { x: 518, y: 198 };
-    return `M ${w3.x},${w3.y} ${getEdgeCurve(w3.x, w3.y, tip.x - mw, tip.y)} A ${mw},${mw} 0 0,1 ${tip.x + mw},${tip.y} ${getEdgeCurve(tip.x + mw, tip.y, w2.x, w2.y)} Z`;
-  }
-  if (fingerId === 'right-ring') {
-    const rw = 7.0;
-    const w2 = { x: 518, y: 198 };
-    const w1 = { x: 568, y: 204 };
-    return `M ${w2.x},${w2.y} ${getEdgeCurve(w2.x, w2.y, tip.x - rw, tip.y)} A ${rw},${rw} 0 0,1 ${tip.x + rw},${tip.y} ${getEdgeCurve(tip.x + rw, tip.y, w1.x, w1.y)} Z`;
-  }
-  if (fingerId === 'right-pinky') {
-    const pw = 6.5;
-    const w1 = { x: 568, y: 204 };
-    return `M ${w1.x},${w1.y} ${getEdgeCurve(w1.x, w1.y, tip.x - pw, tip.y)} A ${pw},${pw} 0 0,1 ${tip.x + pw},${tip.y} C 675,225 684,180 674,255 Z`;
-  }
-  if (fingerId === 'thumb-right') {
-    const tw = 8.0;
-    const w4 = { x: 476, y: 246 };
-    return `M ${w4.x},${w4.y} ${getEdgeCurve(w4.x, w4.y, tip.x + tw, tip.y)} A ${tw},${tw} 0 0,0 ${tip.x - tw},${tip.y + 4} C ${tip.x - 6},${tip.y + 20} 525,290 555,350 Z`;
+  if (isActive) {
+    return (
+      <g key={`${keyPrefix}-${fId}`}>
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#0284c7"
+          strokeWidth="9"
+          strokeOpacity="0.30"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#38bdf8"
+          strokeWidth="5"
+          strokeOpacity="0.75"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#f0f9ff"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+      </g>
+    );
   }
 
-  return null;
-}
+  if (isShift) {
+    return (
+      <g key={`${keyPrefix}-${fId}`}>
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#d97706"
+          strokeWidth="9"
+          strokeOpacity="0.30"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#fbbf24"
+          strokeWidth="5"
+          strokeOpacity="0.75"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+        <line
+          x1={knuckle.x}
+          y1={knuckle.y}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="#fffbeb"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          className="transition-all duration-150 ease-out"
+        />
+      </g>
+    );
+  }
+
+  return (
+    <line
+      key={`${keyPrefix}-${fId}`}
+      x1={knuckle.x}
+      y1={knuckle.y}
+      x2={tip.x}
+      y2={tip.y}
+      stroke="#64748b"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className="transition-all duration-150 ease-out"
+    />
+  );
+};
 
 export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
   targetChar = '',
@@ -471,84 +455,128 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
   const shiftKeyCode = activeInfo?.shiftKeyCode;
   const shiftFinger = activeInfo?.shiftFinger;
 
-  // Active target key definition
+  // Target Key definition
   const targetKey = useMemo(() => {
     if (!targetKeyCode) return null;
     return KEY_BY_CODE.get(targetKeyCode) || null;
   }, [targetKeyCode]);
 
-  // Shift key definition (when shift required)
+  // Shift Key definition
   const shiftKey = useMemo(() => {
     if (!requiresShift || !shiftKeyCode) return null;
     return KEY_BY_CODE.get(shiftKeyCode) || null;
   }, [requiresShift, shiftKeyCode]);
 
-  // Detect error key from lastMistake or live wrong keypress
-  const errorKey = useMemo(() => {
-    const MODIFIER_KEYS = [
-      'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight',
-      'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'Escape',
-    ];
-    // From engine's lastMistake
-    if (lastMistake?.keyCode) {
-      const key = KEY_BY_CODE.get(lastMistake.keyCode);
-      if (key) return key;
+  // Accurate error key detection: only turns red on real mistakes
+  const [activeErrorKey, setActiveErrorKey] = useState<KeyDef | null>(null);
+
+  useEffect(() => {
+    if (!lastMistake) {
+      setActiveErrorKey(null);
+      return;
     }
-    if (lastMistake?.typedChar) {
+
+    let key: KeyDef | null = null;
+    if (lastMistake.keyCode) {
+      key = KEY_BY_CODE.get(lastMistake.keyCode) || null;
+    }
+    if (!key && lastMistake.typedChar) {
       const mapped = FINGER_KEY_MAP[lastMistake.typedChar];
       if (mapped?.keyCode) {
-        const key = KEY_BY_CODE.get(mapped.keyCode);
-        if (key) return key;
+        key = KEY_BY_CODE.get(mapped.keyCode) || null;
       }
     }
-    // Live: currently pressed key that isn't the target or shift
-    if (pressedKey && !MODIFIER_KEYS.includes(pressedKey)) {
-      const isTarget = targetKeyCode === pressedKey;
-      const isShift = requiresShift && shiftKeyCode === pressedKey;
-      if (!isTarget && !isShift) {
-        return KEY_BY_CODE.get(pressedKey) || null;
-      }
-    }
-    return null;
-  }, [lastMistake, pressedKey, targetKeyCode, requiresShift, shiftKeyCode]);
 
-  // Compute dynamic fingertip positions:
-  // Active finger extends directly to target key center (cx, cy)
-  // Shift finger extends to shift key center (cx, cy)
-  // All other fingers rest peacefully on home row keys
-  const dynamicFingertips = useMemo(() => {
+    if (key) {
+      setActiveErrorKey(key);
+      const timer = setTimeout(() => {
+        setActiveErrorKey(null);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [lastMistake]);
+
+  const errorFinger = activeErrorKey?.finger;
+
+  // -----------------------------------------------------------------
+  // 3D KINEMATICS: Minimal floating movement over the keyboard plane
+  // -----------------------------------------------------------------
+  const leftHandShift = useMemo(() => {
+    if (!activeFinger || !targetKey || !isLeftFinger(activeFinger)) {
+      return { x: 0, y: 0 };
+    }
+    const homeTip = HOME_RESTING_TIPS[activeFinger];
+    let targetX = targetKey.cx;
+    let targetY = targetKey.cy;
+    if (targetKey.code === 'Space') {
+      targetX = 348;
+    }
+    const dx = targetX - homeTip.x;
+    const dy = targetY - homeTip.y;
+    return { x: Math.round(dx * 0.20), y: Math.round(dy * 0.22) };
+  }, [activeFinger, targetKey]);
+
+  const rightHandShift = useMemo(() => {
+    if (!activeFinger || !targetKey || !isRightFinger(activeFinger)) {
+      return { x: 0, y: 0 };
+    }
+    const homeTip = HOME_RESTING_TIPS[activeFinger];
+    let targetX = targetKey.cx;
+    let targetY = targetKey.cy;
+    if (targetKey.code === 'Space') {
+      targetX = 388;
+    }
+    const dx = targetX - homeTip.x;
+    const dy = targetY - homeTip.y;
+    return { x: Math.round(dx * 0.20), y: Math.round(dy * 0.22) };
+  }, [activeFinger, targetKey]);
+
+  // Compute fingertip coordinates
+  const fingertips = useMemo(() => {
     const tips = { ...HOME_RESTING_TIPS };
 
     if (activeFinger && targetKey) {
-      tips[activeFinger] = { x: targetKey.cx, y: targetKey.cy };
+      const isLeft = isLeftFinger(activeFinger);
+      const shift = isLeft ? leftHandShift : rightHandShift;
+      let targetX = targetKey.cx;
+      let targetY = targetKey.cy;
+
+      if (targetKey.code === 'Space') {
+        targetX = activeFinger === 'thumb-right' ? 388 : 348;
+      }
+
+      tips[activeFinger] = {
+        x: targetX - shift.x,
+        y: targetY - shift.y,
+      };
     }
 
     if (requiresShift && shiftFinger && shiftKey) {
-      tips[shiftFinger] = { x: shiftKey.cx, y: shiftKey.cy };
+      const isLeft = isLeftFinger(shiftFinger);
+      const shift = isLeft ? leftHandShift : rightHandShift;
+      tips[shiftFinger] = {
+        x: shiftKey.cx - shift.x,
+        y: shiftKey.cy - shift.y,
+      };
     }
 
     return tips;
-  }, [activeFinger, targetKey, requiresShift, shiftFinger, shiftKey]);
+  }, [activeFinger, targetKey, requiresShift, shiftFinger, shiftKey, leftHandShift, rightHandShift]);
 
-  // Hand outlines
-  const leftHandPath = useMemo(() => getLeftHandPath(dynamicFingertips), [dynamicFingertips]);
-  const rightHandPath = useMemo(() => getRightHandPath(dynamicFingertips), [dynamicFingertips]);
+  const isLeftActive = Boolean(
+    (activeFinger && isLeftFinger(activeFinger)) ||
+    (requiresShift && shiftFinger && isLeftFinger(shiftFinger)) ||
+    (errorFinger && isLeftFinger(errorFinger))
+  );
+  const isRightActive = Boolean(
+    (activeFinger && isRightFinger(activeFinger)) ||
+    (requiresShift && shiftFinger && isRightFinger(shiftFinger)) ||
+    (errorFinger && isRightFinger(errorFinger))
+  );
 
-  // Active finger highlight contour
-  const activeHighlightPath = useMemo(() => {
-    if (!activeFinger) return null;
-    return getActiveFingerContour(activeFinger, dynamicFingertips);
-  }, [activeFinger, dynamicFingertips]);
-
-  const shiftHighlightPath = useMemo(() => {
-    if (!requiresShift || !shiftFinger) return null;
-    return getActiveFingerContour(shiftFinger, dynamicFingertips);
-  }, [requiresShift, shiftFinger, dynamicFingertips]);
-
-  const errorHighlightPath = useMemo(() => {
-    if (!errorKey?.finger || errorKey.finger === activeFinger || errorKey.finger === shiftFinger) return null;
-    return getActiveFingerContour(errorKey.finger, dynamicFingertips);
-  }, [errorKey, activeFinger, shiftFinger, dynamicFingertips]);
+  // Left & Right fingers list
+  const leftFingers: FingerId[] = ['left-pinky', 'left-ring', 'left-middle', 'left-index', 'thumb-left'];
+  const rightFingers: FingerId[] = ['thumb-right', 'right-index', 'right-middle', 'right-ring', 'right-pinky'];
 
   return (
     <div
@@ -557,7 +585,7 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
         className
       )}
     >
-      {/* Top Status Banner matching media_1789968158671.png */}
+      {/* Top Status Banner */}
       <div className="w-full flex items-center justify-between gap-3 mb-2 px-1 text-xs sm:text-sm font-mono border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2">
           <span className="text-slate-400 font-sans text-xs">Target:</span>
@@ -577,10 +605,10 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
             </span>
           )}
 
-          {/* Red typo alert badge */}
-          {errorKey && (
+          {/* Red typo alert badge - only appears on actual mistake */}
+          {activeErrorKey && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 border border-red-500/50 text-red-300 font-bold text-xs shadow-sm animate-pulse">
-              ❌ Wrong: {lastMistake?.typedChar === ' ' ? 'Space' : (lastMistake?.typedChar || errorKey.display || errorKey.primary)}
+              ❌ Wrong: {lastMistake?.typedChar === ' ' ? 'Space' : (lastMistake?.typedChar || activeErrorKey.display || activeErrorKey.primary)}
             </span>
           )}
         </div>
@@ -615,25 +643,20 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
         </div>
       </div>
 
-      {/* Unified Overlaid Keyboard & Slender Dynamic Hands SVG */}
+      {/* SVG Container: Keyboard + 3D Hovering Symmetric Stick Hands */}
       <div className="w-full relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/70 shadow-inner">
         <svg
           viewBox="0 0 840 430"
           className="w-full h-auto overflow-visible select-none"
         >
           <defs>
-            {/* Subtle gradients for translucent hands */}
-            <linearGradient id="handFillLeft" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0f172a" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#020617" stopOpacity="0.6" />
-            </linearGradient>
-            <linearGradient id="handFillRight" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#0f172a" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#020617" stopOpacity="0.6" />
-            </linearGradient>
+            {/* 3D Depth Shadow: Cast onto keyboard keys from Z-axis hovering hands */}
+            <filter id="hands3dElevation" filterUnits="userSpaceOnUse" x="0" y="0" width="840" height="430">
+              <feDropShadow dx="0" dy="12" stdDeviation="7" floodColor="#000000" floodOpacity="0.75" />
+            </filter>
 
-            {/* Glowing neon filters */}
-            <filter id="keyGlow" x="-50%" y="-50%" width="200%" height="200%">
+            {/* Glowing neon keycap filters */}
+            <filter id="keyGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="840" height="430">
               <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -641,45 +664,19 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
               </feMerge>
             </filter>
 
-            <filter id="errorKeyGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="errorKeyGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="840" height="430">
               <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-
-            <filter id="fingerGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-
-            {/* Radial gradients for beacon pulse waves */}
-            <radialGradient id="beaconGlow">
-              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.75" />
-              <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="shiftBeaconGlow">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.75" />
-              <stop offset="60%" stopColor="#f59e0b" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="errorBeaconGlow">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.85" />
-              <stop offset="60%" stopColor="#ef4444" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-            </radialGradient>
           </defs>
 
           {/* ------------------------------------------------------------- */}
-          {/* LAYER 1: KEYBOARD CHASSIS & KEYCAPS                           */}
+          {/* LAYER 1: KEYBOARD CHASSIS & KEYCAPS (Z = 0)                   */}
           {/* ------------------------------------------------------------- */}
           <g id="keyboard-chassis">
-            {/* Outer keyboard frame */}
             <rect
               x="22"
               y="14"
@@ -696,7 +693,7 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
               const isTarget = targetKeyCode === key.code;
               const isShiftActive = requiresShift && shiftKeyCode === key.code;
               const isPressed = pressedKey === key.code;
-              const isErrorKey = errorKey?.code === key.code;
+              const isErrorKey = activeErrorKey?.code === key.code;
 
               let fill = '#111827';
               let stroke = '#1f2937';
@@ -711,18 +708,18 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
                 textColor = '#ffffff';
                 filterAttr = 'url(#errorKeyGlow)';
               } else if (isPressed) {
-                fill = '#0284c7';
+                fill = '#0284c7'; // Blue on active keypress
                 stroke = '#38bdf8';
                 strokeWidth = 2;
                 textColor = '#ffffff';
               } else if (isTarget) {
-                fill = '#0369a1';
+                fill = '#0369a1'; // Soft cyan on target
                 stroke = '#38bdf8';
                 strokeWidth = 2;
                 textColor = '#ffffff';
                 filterAttr = 'url(#keyGlow)';
               } else if (isShiftActive) {
-                fill = '#78350f';
+                fill = '#78350f'; // Amber on required shift
                 stroke = '#f59e0b';
                 strokeWidth = 2;
                 textColor = '#fef3c7';
@@ -731,7 +728,6 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
 
               return (
                 <g key={key.code} className="transition-all duration-150">
-                  {/* Keycap background */}
                   <rect
                     x={key.x}
                     y={key.y}
@@ -788,190 +784,154 @@ export const KeyboardGuide: React.FC<KeyboardGuideProps> = ({
           </g>
 
           {/* ------------------------------------------------------------- */}
-          {/* LAYER 2: HOME ROW CONCENTRIC ANCHORS (from media_1789968158671)*/}
+          {/* LAYER 2: 3D FLOATING STICK HANDS (Z > 0 above keyboard)       */}
+          {/* Pure clean lines with NO circle dots and NO extra cross lines */}
           {/* ------------------------------------------------------------- */}
-          <g id="home-row-anchors" pointerEvents="none">
-            {[
-              { cx: 143, cy: 141 }, // A
-              { cx: 193, cy: 141 }, // S
-              { cx: 243, cy: 141 }, // D
-              { cx: 293, cy: 141 }, // F
-              { cx: 443, cy: 141 }, // J
-              { cx: 493, cy: 141 }, // K
-              { cx: 543, cy: 141 }, // L
-              { cx: 593, cy: 141 }, // ;
-            ].map(({ cx, cy }, i) => (
-              <g key={i} transform={`translate(${cx}, ${cy})`}>
-                <circle r="6" stroke="#64748b" strokeWidth="1" fill="none" opacity="0.4" />
-                <circle r="11" stroke="#475569" strokeWidth="0.8" fill="none" opacity="0.25" />
-              </g>
-            ))}
+          <g id="stick-hands" filter="url(#hands3dElevation)" className="pointer-events-none select-none">
+            {/* ====== LEFT STICK HAND ====== */}
+            {/* Forearm stick anchored at bottom edge */}
+            {isLeftActive && (
+              <line
+                x1="218"
+                y1="430"
+                x2={LEFT_WRIST.x + leftHandShift.x}
+                y2={LEFT_WRIST.y + leftHandShift.y}
+                stroke="#0284c7"
+                strokeWidth="7"
+                strokeOpacity="0.35"
+                strokeLinecap="round"
+                className="transition-all duration-200 ease-out"
+              />
+            )}
+            <line
+              x1="218"
+              y1="430"
+              x2={LEFT_WRIST.x + leftHandShift.x}
+              y2={LEFT_WRIST.y + leftHandShift.y}
+              stroke={isLeftActive ? '#38bdf8' : '#475569'}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              className="transition-all duration-200 ease-out"
+            />
+
+            {/* Floating Left Hand Assembly */}
+            <g
+              transform={`translate(${leftHandShift.x}, ${leftHandShift.y})`}
+              className="transition-transform duration-200 ease-out"
+            >
+              {/* Clean Trapezoid Palm Cup (NO inner extra cross line) */}
+              <polygon
+                points={`
+                  ${LEFT_WRIST.x},${LEFT_WRIST.y}
+                  ${LEFT_KNUCKLES['left-pinky'].x},${LEFT_KNUCKLES['left-pinky'].y}
+                  ${LEFT_KNUCKLES['left-ring'].x},${LEFT_KNUCKLES['left-ring'].y}
+                  ${LEFT_KNUCKLES['left-middle'].x},${LEFT_KNUCKLES['left-middle'].y}
+                  ${LEFT_KNUCKLES['left-index'].x},${LEFT_KNUCKLES['left-index'].y}
+                  ${LEFT_KNUCKLES['thumb-left'].x},${LEFT_KNUCKLES['thumb-left'].y}
+                `}
+                fill={isLeftActive ? 'rgba(56, 189, 248, 0.12)' : 'rgba(30, 41, 59, 0.35)'}
+                stroke={isLeftActive ? '#38bdf8' : '#475569'}
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                className="transition-colors duration-200"
+              />
+
+              {/* 5 Left Finger Sticks (pure lines, no dots) */}
+              {leftFingers.map((fId) => {
+                const knuckle = LEFT_KNUCKLES[fId];
+                const tip = fingertips[fId];
+                const isActive = activeFinger === fId;
+                const isShift = shiftFinger === fId;
+                const isError = errorFinger === fId;
+
+                return renderFingerStick('left', fId, knuckle, tip, isActive, isShift, isError);
+              })}
+            </g>
+
+            {/* ====== RIGHT STICK HAND (Exact mirror: 736 - x) ====== */}
+            {/* Forearm stick anchored at bottom edge */}
+            {isRightActive && (
+              <line
+                x1="518"
+                y1="430"
+                x2={RIGHT_WRIST.x + rightHandShift.x}
+                y2={RIGHT_WRIST.y + rightHandShift.y}
+                stroke="#0284c7"
+                strokeWidth="7"
+                strokeOpacity="0.35"
+                strokeLinecap="round"
+                className="transition-all duration-200 ease-out"
+              />
+            )}
+            <line
+              x1="518"
+              y1="430"
+              x2={RIGHT_WRIST.x + rightHandShift.x}
+              y2={RIGHT_WRIST.y + rightHandShift.y}
+              stroke={isRightActive ? '#38bdf8' : '#475569'}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              className="transition-all duration-200 ease-out"
+            />
+
+            {/* Floating Right Hand Assembly */}
+            <g
+              transform={`translate(${rightHandShift.x}, ${rightHandShift.y})`}
+              className="transition-transform duration-200 ease-out"
+            >
+              {/* Clean Trapezoid Palm Cup (mirrored, NO inner extra cross line) */}
+              <polygon
+                points={`
+                  ${RIGHT_WRIST.x},${RIGHT_WRIST.y}
+                  ${RIGHT_KNUCKLES['right-pinky'].x},${RIGHT_KNUCKLES['right-pinky'].y}
+                  ${RIGHT_KNUCKLES['right-ring'].x},${RIGHT_KNUCKLES['right-ring'].y}
+                  ${RIGHT_KNUCKLES['right-middle'].x},${RIGHT_KNUCKLES['right-middle'].y}
+                  ${RIGHT_KNUCKLES['right-index'].x},${RIGHT_KNUCKLES['right-index'].y}
+                  ${RIGHT_KNUCKLES['thumb-right'].x},${RIGHT_KNUCKLES['thumb-right'].y}
+                `}
+                fill={isRightActive ? 'rgba(56, 189, 248, 0.12)' : 'rgba(30, 41, 59, 0.35)'}
+                stroke={isRightActive ? '#38bdf8' : '#475569'}
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                className="transition-colors duration-200"
+              />
+
+              {/* 5 Right Finger Sticks (pure lines, no dots) */}
+              {rightFingers.map((fId) => {
+                const knuckle = RIGHT_KNUCKLES[fId];
+                const tip = fingertips[fId];
+                const isActive = activeFinger === fId;
+                const isShift = shiftFinger === fId;
+                const isError = errorFinger === fId;
+
+                return renderFingerStick('right', fId, knuckle, tip, isActive, isShift, isError);
+              })}
+            </g>
           </g>
 
           {/* ------------------------------------------------------------- */}
-          {/* LAYER 3: RADIAL BEACONS (Target, Shift, Error)                */}
-          {/* ------------------------------------------------------------- */}
-          {/* Target Key Radial Beacon */}
-          {targetKey && (
-            <g id="target-beacon" transform={`translate(${targetKey.cx}, ${targetKey.cy})`} pointerEvents="none">
-              <circle
-                r="36"
-                fill="url(#beaconGlow)"
-                className="animate-ping opacity-60"
-              />
-              <circle
-                r="22"
-                fill="url(#beaconGlow)"
-                className="opacity-75"
-              />
-              <circle
-                r="4.5"
-                fill="#ffffff"
-                className="animate-pulse"
-              />
-            </g>
-          )}
-
-          {/* Shift Key Radial Beacon */}
-          {shiftKey && (
-            <g id="shift-beacon" transform={`translate(${shiftKey.cx}, ${shiftKey.cy})`} pointerEvents="none">
-              <circle
-                r="32"
-                fill="url(#shiftBeaconGlow)"
-                className="animate-ping opacity-60"
-              />
-              <circle
-                r="18"
-                fill="url(#shiftBeaconGlow)"
-                className="opacity-75"
-              />
-            </g>
-          )}
-
-          {/* Error Key Red Beacon (pulsing ripple on wrong key) */}
-          {errorKey && (
-            <g id="error-beacon" transform={`translate(${errorKey.cx}, ${errorKey.cy})`} pointerEvents="none">
-              <circle
-                r="36"
-                fill="url(#errorBeaconGlow)"
-                className="animate-ping opacity-80"
-              />
-              <circle
-                r="22"
-                fill="url(#errorBeaconGlow)"
-                className="opacity-90"
-              />
-              {/* ✕ cross indicator */}
-              <line x1="-5" y1="-5" x2="5" y2="5" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="5" y1="-5" x2="-5" y2="5" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-            </g>
-          )}
-
-          {/* ------------------------------------------------------------- */}
-          {/* LAYER 4: SLENDER OVERLAID HANDS (matching media_1789968158671) */}
-          {/* ------------------------------------------------------------- */}
-          <g id="hands-overlay" className="pointer-events-none select-none">
-            {/* Left Hand Silhouette */}
-            <path
-              d={leftHandPath}
-              fill="url(#handFillLeft)"
-              stroke="#38bdf8"
-              strokeOpacity="0.75"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              className="transition-all duration-150 ease-out"
-            />
-
-            {/* Right Hand Silhouette */}
-            <path
-              d={rightHandPath}
-              fill="url(#handFillRight)"
-              stroke="#94a3b8"
-              strokeOpacity="0.75"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              className="transition-all duration-150 ease-out"
-            />
-
-            {/* ----------------------------------------------------------- */}
-            {/* LAYER 5: ACTIVE GLOWING FINGER REACH OVERLAYS               */}
-            {/* ----------------------------------------------------------- */}
-            {/* Active Finger Glow Highlight (Cyan) */}
-            {activeHighlightPath && (
-              <path
-                d={activeHighlightPath}
-                fill="rgba(56, 189, 248, 0.22)"
-                stroke="#38bdf8"
-                strokeWidth="2.8"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                filter="url(#fingerGlow)"
-                className="transition-all duration-150 ease-out"
-              />
-            )}
-
-            {/* Shift Finger Glow Highlight (Amber) */}
-            {shiftHighlightPath && (
-              <path
-                d={shiftHighlightPath}
-                fill="rgba(245, 158, 11, 0.22)"
-                stroke="#f59e0b"
-                strokeWidth="2.8"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                filter="url(#fingerGlow)"
-                className="transition-all duration-150 ease-out"
-              />
-            )}
-
-            {/* Error Finger Glow Highlight (Red) */}
-            {errorHighlightPath && (
-              <path
-                d={errorHighlightPath}
-                fill="rgba(239, 68, 68, 0.25)"
-                stroke="#ef4444"
-                strokeWidth="2.8"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                filter="url(#errorKeyGlow)"
-                className="transition-all duration-150 ease-out"
-              />
-            )}
-          </g>
-
-          {/* ------------------------------------------------------------- */}
-          {/* LAYER 6: HOME ROW LABELS & SPARK (from media_1789968158671)   */}
+          {/* LAYER 3: HOME ROW LABELS                                      */}
           {/* ------------------------------------------------------------- */}
           <text
-            x="220"
+            x="218"
             y="420"
             textAnchor="middle"
             className="text-[11px] font-mono tracking-wider select-none"
           >
-            <tspan fill="#64748b">LEFT HAND RESTING (</tspan>
+            <tspan fill="#64748b">LEFT HAND (</tspan>
             <tspan fill="#22d3ee" fontWeight="bold">A S D F</tspan>
             <tspan fill="#64748b">)</tspan>
           </text>
           <text
-            x="620"
+            x="518"
             y="420"
             textAnchor="middle"
             className="text-[11px] font-mono tracking-wider select-none"
           >
-            <tspan fill="#64748b">RIGHT HAND RESTING (</tspan>
+            <tspan fill="#64748b">RIGHT HAND (</tspan>
             <tspan fill="#22d3ee" fontWeight="bold">J K L ;</tspan>
             <tspan fill="#64748b">)</tspan>
           </text>
-
-          {/* Subtle decorative 4-point star spark at bottom right */}
-          <g transform="translate(765, 395) scale(0.9)" opacity="0.6">
-            <path
-              d="M 0,-14 Q 0,0 14,0 Q 0,0 0,14 Q 0,0 -14,0 Q 0,0 0,-14 Z"
-              fill="#64748b"
-            />
-          </g>
         </svg>
       </div>
     </div>
