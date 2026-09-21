@@ -25,7 +25,16 @@ export default {
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'Roboto Mono', 'ui-monospace', 'monospace'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-      }
+      },
+      keyframes: {
+        glowPulse: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.75', transform: 'scale(1.12)' },
+        },
+      },
+      animation: {
+        'glow-pulse': 'glowPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
     },
   },
   plugins: [],

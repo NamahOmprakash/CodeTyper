@@ -44,6 +44,7 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
 | **`CodeDisplay`** | `src/components/CodeDisplay.tsx` | `TypingView.tsx` | None | VS Code Dark+ and OneCompiler code editor view, per-character syntax coloring, line gutter, and status bar. |
 | **`CoachBubble`** | `src/components/CoachBubble.tsx` | `TypingView.tsx` | Trigger for `AISettings` | Visual banner/bubble showing real-time feedback from the AI Teaching Agent with "Read Aloud" and "Ask Coach" buttons. |
 | **`AISettings`** | `src/components/AISettings.tsx` | `TypingView.tsx` | None | Modal dialog to configure coach intelligence (LM Studio, Ollama, Gemini API, OpenAI API). |
+| **`KeyboardGuide`** | `src/components/KeyboardGuide.tsx` | `TypingView.tsx` | None | TypingClub-style ANSI QWERTY keyboard with integrated vector SVG hand-placement guide, active fingertip nodes, and shift coordination. |
 | **`KeyboardVisualizer`** | `src/components/KeyboardVisualizer.tsx` | `TypingView.tsx` | `HandDiagram` | Virtual QWERTY keyboard with green/yellow/red semantic keys, shift indicators, and touch-typing finger guide. |
 | **`HandDiagram`** | `src/components/HandDiagram.tsx` | `KeyboardVisualizer.tsx` | None | Dual-hand SVG vector diagram highlighting the active finger (emerald) and shift finger (amber). |
 | **`CodeExplainer`** | `src/components/CodeExplainer.tsx` | `TypingView.tsx` | None | Right-hand sidebar with natural TTS code breakdown, collapsible Tricky Symbol Tips, and expected stdout card. |

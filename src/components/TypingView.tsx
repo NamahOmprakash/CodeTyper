@@ -23,7 +23,7 @@ import { useCoach } from '../hooks/useCoach';
 import { useTTS } from '../hooks/useTTS';
 import { executeCode } from '../utils/codeRunner';
 import { CodeDisplay } from './CodeDisplay';
-import { KeyboardVisualizer } from './KeyboardVisualizer';
+import { KeyboardGuide } from './KeyboardGuide';
 import { CodeExplainer } from './CodeExplainer';
 import { CoachBubble } from './CoachBubble';
 import { AISettings } from './AISettings';
@@ -82,6 +82,7 @@ export const TypingView: React.FC<TypingViewProps> = ({
     reset,
   } = engine;
 
+  const [pressedKey, setPressedKey] = useState<string>('');
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
   const {
     speak,
@@ -180,12 +181,19 @@ export const TypingView: React.FC<TypingViewProps> = ({
         e.preventDefault();
       }
 
+      setPressedKey(e.code);
       handleKeyDown(e);
     };
 
+    const onWindowKeyUp = () => {
+      setPressedKey('');
+    };
+
     window.addEventListener('keydown', onWindowKeyDown);
+    window.addEventListener('keyup', onWindowKeyUp);
     return () => {
       window.removeEventListener('keydown', onWindowKeyDown);
+      window.removeEventListener('keyup', onWindowKeyUp);
     };
   }, [
     handleKeyDown,
@@ -443,11 +451,10 @@ export const TypingView: React.FC<TypingViewProps> = ({
             onToggleCoach={coach.setCoachEnabled}
           />
 
-          {/* Virtual Keyboard & Hand Placement Visualizer */}
-          <KeyboardVisualizer
-            currentExpectedChar={currentExpectedChar}
-            lastMistake={lastMistake}
-            focusKeys={lesson.keyFocus}
+          {/* TypingClub-Style Dynamic Keyboard & Hand-Placement Guide */}
+          <KeyboardGuide
+            targetChar={currentExpectedChar}
+            pressedKey={pressedKey}
           />
         </div>
 
