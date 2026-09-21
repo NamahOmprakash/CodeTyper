@@ -11,9 +11,9 @@ Unlike standard prose typing tests, Key Script is designed from the ground up fo
 - **⚡ Syntax-Aware Typing Engine**: Built specifically for code. Automatically manages multi-space indentation, consecutive tabs, string literals, and bracket pairs without browser scrolling or tab-focus hijacking.
 - **🖐️ Dynamic Dual-Hand Finger Guide**: Vector SVG visualization depicting the exact finger responsible for each incoming keystroke, with distinct emerald active-finger indicators and amber shift-hand coordination.
 - **⌨️ Real-Time Mechanical Feedback**: Authentic mechanical switch sound effects generated in real time using the browser's native Web Audio API (no external audio assets required).
-- **📚 Multi-Language Structured Curriculums**:
-  - **Python**: Variables, f-strings, list comprehensions, dictionary operations, file context managers, and object-oriented paradigms.
-  - **C++**: Stream I/O, references, STL `std::vector` pipelines, pointer arithmetic, memory allocation, and Binary Search Trees.
+- **📚 Multi-Language Structured Curriculums (30 Comprehensive Lessons)**:
+  - **Python Track (15 Lessons)**: Output & Quotes, Variables & F-Strings, Conditionals & Indentation, For Loops & Iteration, Functions & Returns, Dictionaries & Hash Maps, List Comprehensions & Lambdas, While Loops & Accumulators, Sets & Tuple Unpacking, Exception Handling (`try`/`except`), Classes & OOP (`__init__`), String Delimiters & Parsing, Flexible Signatures (`**kwargs`), Decorators & Closures (`@`), and Generators (`yield`).
+  - **C++ Track (15 Lessons)**: Standard I/O (`#include <iostream>`), Data Types & Precision, Conditionals & Code Braces, For Loops & Fixed Arrays, Functions & Signatures, Pass-by-Reference (`&`), Pointers & Dereferencing (`*`), Structs & Dot Access (`.`), Dynamic Memory (`new`/`delete`), STL Vectors (`std::vector`), Classes & Constructors (`:`), Arrow Dereference (`->`), Generic Function Templates (`<typename T>`), Lambda Expressions (`[](){}`), and Linked Nodes & Pointer Traversal.
 - **📂 Custom Code Snippet Manager**: Drag and drop your own `.py` or `.cpp` source files or paste custom code snippets to practice your personal codebase. Snippets are saved locally in browser storage.
 - **📊 Comprehensive Performance Analytics**: TypingClub-style post-lesson debrief calculating standard WPM, raw WPM, accuracy %, time elapsed, streak records, and specific keys needing review.
 - **🎨 Developer Themes**: Sleek Dark Mode (inspired by VS Code Dark+) and Crisp Light Mode with full UI persistence.

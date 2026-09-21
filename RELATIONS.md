@@ -39,7 +39,7 @@ This document maps all file relationships, data flows, hook lifecycles, and comp
 | :--- | :--- | :--- | :--- | :--- |
 | **`App`** | `src/App.tsx` | `main.tsx` | `Header`, `LessonList`, `TypingView`, `ResultsScreen`, `CustomCodeView`, `MobileDashboard` | Root controller, manages active view, language selection, lesson progression, and mobile viewport detection. |
 | **`Header`** | `src/components/Header.tsx` | `App.tsx` | None | Top navigation bar with language pills (Python / C++), theme toggle, mute button, and fullscreen trigger. Hidden during Focus Mode. |
-| **`LessonList`** | `src/components/LessonList.tsx` | `App.tsx` | None | Curriculum view showing 5 structured Python and 5 C++ lessons with star ratings and WPM badges. |
+| **`LessonList`** | `src/components/LessonList.tsx` | `App.tsx` | None | Curriculum view showing 15 structured Python and 15 C++ lessons (30 total) with star ratings and WPM badges. |
 | **`TypingView`** | `src/components/TypingView.tsx` | `App.tsx` | `CodeDisplay`, `CoachBubble`, `AISettings`, `KeyboardVisualizer`, `CodeExplainer` | Main typing arena, manages window key listeners, HUD stats, code execution drawer, and layout split. |
 | **`CodeDisplay`** | `src/components/CodeDisplay.tsx` | `TypingView.tsx` | None | VS Code Dark+ and OneCompiler code editor view, per-character syntax coloring, line gutter, and status bar. |
 | **`CoachBubble`** | `src/components/CoachBubble.tsx` | `TypingView.tsx` | Trigger for `AISettings` | Visual banner/bubble showing real-time feedback from the AI Teaching Agent with "Read Aloud" and "Ask Coach" buttons. |
