@@ -1,8 +1,8 @@
-# Key Script ⌨️
+# Code Typer ⌨️
 
-**Key Script** is an intelligent, developer-first touch-typing tutor and code fluency accelerator engineered to build muscle memory, cadence, and syntax confidence across real-world programming languages.
+**Code Typer** is an intelligent, developer-first touch-typing tutor and code fluency accelerator engineered to build muscle memory, cadence, and syntax confidence across real-world programming languages.
 
-Unlike standard prose typing tests, Key Script is designed from the ground up for the realities of code: indentation levels, brackets, string interpolations, pointer asterisks, language keywords, and semicolon cadences.
+Unlike standard prose typing tests, Code Typer is designed from the ground up for the realities of code: indentation levels, brackets, string interpolations, pointer asterisks, language keywords, and semicolon cadences.
 
 ---
 
@@ -22,7 +22,7 @@ Unlike standard prose typing tests, Key Script is designed from the ground up fo
 
 ## 🧪 Experimental Features
 
-The following modules represent active frontiers in Key Script and are flagged as experimental:
+The following modules represent active frontiers in Code Typer and are flagged as experimental:
 
 ### 🏷️ `[Experimental]` Local & Cloud AI Teaching Agent
 - Real-time pedagogical guidance and mistake pattern diagnosis.
@@ -93,7 +93,7 @@ To enable offline, privacy-first AI coaching:
 2. In **LM Studio**:
    - Start the local server (default port: `1234`).
    - Load any supported coding or instruct model (e.g. Qwen 2.5 Coder, Llama 3, Mistral).
-3. In **Key Script**:
+3. In **Code Typer**:
    - Click the ⚙️ icon on the AI Coach bubble in the typing view.
    - Select **LM Studio** (or **Ollama**).
    - Enter your model identifier and verify the endpoint URL (`http://localhost:1234/v1`).
@@ -104,7 +104,7 @@ To enable offline, privacy-first AI coaching:
 ## 📁 Project Structure
 
 ```
-Key Script/
+Code Typer/
 ├── index.html                   # HTML entry point with metadata
 ├── package.json                 # Project dependencies and build scripts
 ├── RELATIONS.md                 # Full component topology and state relations
